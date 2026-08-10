@@ -1,0 +1,66 @@
+# pixi project for the MatSAM Analyzer (grain + phase segmentation with SAM2).
+#
+# Channels: conda-forge only (community-run, free for commercial use). No
+# Anaconda `defaults` channel -> no Anaconda commercial licence / ToS ever
+# required. pixi itself is BSD-3-Clause (prefix.dev), free for any use.
+#
+# TWO environments so ANY user can install (mixed hardware):
+#   * gpu (default) -> CUDA PyTorch; conda-forge bundles the CUDA runtime + cuDNN
+#                      so the user needs ONLY an NVIDIA GPU + a recent driver
+#                      (no CUDA toolkit / cuDNN pre-install).
+#   * cpu           -> CPU-only PyTorch; works on any machine (no NVIDIA GPU).
+# install.bat picks the right one automatically (NVIDIA GPU present -> gpu).
+#
+# The SAM2 weights are NOT installed here: the app downloads
+# facebook/sam2-hiera-large (Apache-2.0, ungated) into ./models/sam2 on first
+# run, and reuses it if already present (see matsam_engine/paths.py).
+[workspace]
+name = "matsam-analyzer"
+version = "1.0.0"
+description = "MatSAM grain + phase segmentation (SAM2) desktop GUI"
+channels = ["conda-forge"]
+# CUDA 12 is declared on the GPU feature (below), not globally, so the CPU
+# environment can still solve on machines without an NVIDIA GPU.
+platforms = ["win-64", "linux-64"]
+
+[tasks]
+app = "python app.py"
+verify = "python verify_matsam.py"
+
+# ---- shared deps (both environments) -----------------------------------------
+# Pinned to the versions verified against the notebook (EBSD_SAM3 env).
+[dependencies]
+python = "3.12.*"
+numpy = "2.3.*"
+scipy = "1.17.*"
+matplotlib-base = "3.10.*"
+scikit-image = "0.26.*"
+opencv = "4.13.*"                 # conda-forge build (Apache-2.0, no GPL FFmpeg)
+pillow = "12.1.*"
+orix = "0.14.*"
+pyside6 = "6.11.*"
+huggingface_hub = ">=0.30,<2"    # first-run SAM2 download
+transformers = "5.0.*"           # provides Sam2Model / Sam2Processor
+safetensors = "*"                # safe (non-pickle) weight loading
+
+# ---- GPU feature: CUDA PyTorch (runtime + cuDNN bundled by conda-forge) -------
+# CUDA 12 on this feature makes the GPU env resolve the cuda12.x pytorch build,
+# while the CPU env (below) stays CUDA-free. (pixi warns that
+# system-requirements is "deprecated"; per-feature CUDA is still the documented
+# way to do this and the warning is harmless.)
+[feature.gpu.system-requirements]
+cuda = "12"
+
+[feature.gpu.dependencies]
+pytorch = "2.*"
+pytorch-gpu = "*"
+
+# ---- CPU feature: CPU-only PyTorch (no NVIDIA GPU needed) ---------------------
+[feature.cpu.dependencies]
+pytorch-cpu = "2.*"
+
+# ---- environments ------------------------------------------------------------
+# `gpu` is the default (solved for CUDA machines); `cpu` for everything else.
+[environments]
+default = { features = ["gpu"] }
+cpu = { features = ["cpu"] }

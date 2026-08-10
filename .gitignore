@@ -1,0 +1,22 @@
+.pixi/
+.pixi-bin/
+.matsam-env
+build/
+dist/
+__pycache__/
+*.pyc
+_e2e*.py
+_e2e*.txt
+_*.png
+_*.pptx
+
+# local scratch / dev-only files (not part of the shipped app)
+_combo.py
+_r.txt
+
+# SAM2 model weights (~0.9 GB) — downloaded on first run into models/sam2.
+# Never commit; keep the GitHub repo small.
+models/
+
+# saved result images from local runs
+matsam_result*.png
