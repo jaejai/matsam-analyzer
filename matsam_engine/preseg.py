@@ -22,7 +22,7 @@ from .loader import MapData
 def _morph(binary, min_size=0, erode=0, dilate=0):
     b = binary
     if min_size:
-        b = remove_small_objects(b, min_size)
+        b = remove_small_objects(b, max_size=min_size)   # max_size=N == old min_size=N
     b = b.astype(np.uint8)
     if erode:
         b = cv2.erode(b, np.ones((erode, erode), np.uint8))
@@ -142,7 +142,7 @@ def seg_otsu_phase(cfg, img_u8, dark_fg=True):
     a = per_task(cfg.min_mask_area, "phase")
     t = threshold_otsu(img_u8)
     fg = img_u8 < t if dark_fg else img_u8 > t
-    fg = remove_small_holes(remove_small_objects(fg, a), a)
+    fg = remove_small_holes(remove_small_objects(fg, max_size=a), max_size=a)
     return fg
 
 
@@ -151,7 +151,7 @@ def seg_adaptive_phase(cfg, img_u8, dark_fg=True):
     blk = cfg.adapt_block | 1
     tt = cv2.THRESH_BINARY_INV if dark_fg else cv2.THRESH_BINARY
     fg = cv2.adaptiveThreshold(img_u8, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, tt, blk, cfg.adapt_c) > 0
-    fg = remove_small_holes(remove_small_objects(fg, a), a)
+    fg = remove_small_holes(remove_small_objects(fg, max_size=a), max_size=a)
     return fg
 
 

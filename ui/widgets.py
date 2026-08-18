@@ -177,16 +177,59 @@ class FigurePane(QFrame):
         self.canvas = None
         self._install_canvas(self.figure)
 
+    # crop-selection support (set via enable_crop)
+    _crop_cb = None
+    _crop_selector = None
+
     def set_builder(self, builder):
         """Store the figure-builder so a click can re-render it large."""
         self._builder = builder
 
+    def enable_crop(self, callback):
+        """Turn this pane into a drag-to-crop surface.
+
+        `callback(x0, y0, w, h)` (integer pixels on the displayed map) is called
+        as the user drags a rectangle. While crop mode is on, clicking the pane
+        does NOT open the enlarge popup (the drag would otherwise fight it).
+        Call enable_crop(None) to turn it back off.
+        """
+        self._crop_cb = callback
+        self._attach_selector()
+
+    def _attach_selector(self):
+        # (re)attach a RectangleSelector to the first axes of the current figure
+        from matplotlib.widgets import RectangleSelector
+        self._crop_selector = None
+        if self._crop_cb is None or not self.figure.axes:
+            return
+        ax = self.figure.axes[0]
+
+        def _on_select(epress, erelease):
+            if epress.xdata is None or erelease.xdata is None:
+                return
+            x0, x1 = sorted((epress.xdata, erelease.xdata))
+            y0, y1 = sorted((epress.ydata, erelease.ydata))
+            x0i, y0i = int(round(x0)), int(round(y0))
+            wi, hi = int(round(x1 - x0)), int(round(y1 - y0))
+            if wi >= 2 and hi >= 2 and self._crop_cb:
+                self._crop_cb(max(0, x0i), max(0, y0i), wi, hi)
+
+        try:
+            self._crop_selector = RectangleSelector(
+                ax, _on_select, useblit=True, button=[1], minspanx=3, minspany=3,
+                spancoords="data", interactive=True,
+                props=dict(facecolor="none", edgecolor="#3B82F6", linewidth=1.6))
+        except Exception:
+            self._crop_selector = None
+
     def mouseDoubleClickEvent(self, event):
-        self._open_popup()
+        if self._crop_cb is None:
+            self._open_popup()
 
     def mousePressEvent(self, event):
-        # single click on the figure also enlarges
-        self._open_popup()
+        # single click enlarges — but not while crop-dragging is active
+        if self._crop_cb is None:
+            self._open_popup()
 
     def _open_popup(self):
         if self._builder is None:
@@ -203,19 +246,37 @@ class FigurePane(QFrame):
         self.figure = fig
         self.canvas = FigureCanvas(fig)
         self.canvas.setMinimumHeight(self._min_h)
+        # Cap the canvas width to the figure's own aspect at this height, so a
+        # tall/narrow figure is NOT given a canvas far wider than it can fill
+        # (which left big side gaps and pushed the panels apart). Height still
+        # expands; width is bounded to the figure aspect + a little slack.
+        try:
+            fw, fh = fig.get_size_inches()
+            aspect = float(fw) / float(fh) if fh else 1.0
+            self.canvas.setMaximumWidth(int(self._min_h * aspect * 1.15) + 40)
+        except Exception:
+            pass
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.canvas.setStyleSheet("background:#ffffff;")
-        self._host_l.addWidget(self.canvas)
+        # centre a width-capped canvas so a narrow figure sits in the middle of
+        # the card rather than hugging the left edge.
+        self._host_l.addWidget(self.canvas, alignment=Qt.AlignHCenter)
 
     def show_figure(self, fig: Figure):
         # constrained layout keeps colorbars/labels inside the axes box; a fresh
-        # canvas then renders the whole figure scaled to the widget.
-        try:
-            fig.set_layout_engine("constrained")
-        except Exception:
-            pass
+        # canvas then renders the whole figure scaled to the widget. A figure that
+        # set _packed (tight custom layout, e.g. adjacent image panels) is left
+        # as-is so its packing is not overridden.
+        if not getattr(fig, "_packed", False):
+            try:
+                fig.set_layout_engine("constrained")
+            except Exception:
+                pass
         self._install_canvas(fig)
         self.canvas.draw_idle()
+        # re-arm the crop selector on the new axes if crop mode is active
+        if self._crop_cb is not None:
+            self._attach_selector()
 
 
 class SegGroup(QWidget):

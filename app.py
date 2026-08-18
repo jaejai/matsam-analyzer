@@ -318,6 +318,17 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, APP_TITLE, "Failed:\n\n" + tb.strip().splitlines()[-1])
 
     # ================================================================= refresh
+    def _on_crop_drag(self, x0, y0, w, h):
+        """A rectangle dragged on the Load map -> fill the crop boxes + enable."""
+        c = self.step_ctrls[0]
+        if "crop_x" not in c:
+            return
+        c["crop_x"].setValue(int(x0)); c["crop_y"].setValue(int(y0))
+        c["crop_w"].setValue(int(w));  c["crop_h"].setValue(int(h))
+        c["crop_enabled"].setChecked(True)
+        self._log(f"crop set from drag: x={x0} y={y0} w={w} h={h} "
+                  f"(re-run Load to apply)")
+
     def _refresh(self, stage):
         cfg = self.cfg; st = self.state
         r1, r2, r3, r4, r5 = (self.step_results[i] for i in range(5))
@@ -330,6 +341,9 @@ class MainWindow(QMainWindow):
                 r1["shape"].set_value(f"{md.H} × {md.W}")
                 import numpy as _np
                 r1["kam"].set_value(f"{_np.degrees(md.kam_arr.mean()):.2f}°" if md.kam_arr is not None else "n/a")
+                # drag-to-crop on the loaded map: a dragged rectangle fills the
+                # Step-1 crop boxes and ticks 'Crop before analysis'.
+                r1["maps"].enable_crop(self._on_crop_drag)
             elif stage == STAGE_SEEDS:
                 seeds = st["seeds"]
                 # show only the panes for the current task; hide the other so a

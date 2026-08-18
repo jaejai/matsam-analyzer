@@ -24,7 +24,16 @@ class Config:
 
     # --- paths ---------------------------------------------------------------
     model_dir: str = ""            # folder holding the SAM2 model
-    ang_file: str = ""             # full path to the .ang scan
+    input_file: str = ""           # full path to the EBSD scan (.ang/.osc/.ctf/h5)
+    ang_file: str = ""             # backward-compat alias for input_file
+
+    # --- crop (applied to the square-grid maps right after load, before
+    #     pre-seg / SAM / screening) --------------------------------------------
+    crop_enabled: bool = False     # crop the maps before anything else runs
+    crop_x: int = 0                # left edge  [px] on the square grid
+    crop_y: int = 0                # top edge   [px]
+    crop_w: int = 0                # width  [px] (0 or beyond edge -> to the edge)
+    crop_h: int = 0                # height [px]
 
     # --- grain pre-segmentation ---------------------------------------------
     preseg_grain: str = "watershed"   # "otsu_edge" | "canny" | "watershed" | "slic"
@@ -112,6 +121,14 @@ class Config:
     # --- ground truth (optional metrics) ------------------------------------
     gt_grain: Optional[object] = None
     gt_phase: Optional[object] = None
+
+    def __post_init__(self):
+        # Reconcile the ang_file backward-compat alias with input_file so old
+        # callers Config(ang_file=...) keep working and both end up equal.
+        if not self.input_file and self.ang_file:
+            self.input_file = self.ang_file
+        elif self.input_file and not self.ang_file:
+            self.ang_file = self.input_file
 
     @property
     def sam2_dir(self) -> str:

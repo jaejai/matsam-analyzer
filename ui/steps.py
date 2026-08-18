@@ -73,26 +73,46 @@ def build_step_controls(win, n):
 
     # ------------------------------------------------------------- STEP 1
     if n == 1:
-        ang = QLineEdit(); ang.setPlaceholderText("Select a .ang file ...")
+        ang = QLineEdit(); ang.setPlaceholderText("Select an EBSD scan file ...")
         browse = QPushButton("Browse"); browse.setObjectName("BrowseBtn")
         def pick():
             import os
             from app import ROOT
             sd = os.path.join(ROOT, "dp_data", "sqr")
             sd = sd if os.path.isdir(sd) else ROOT
-            p, _ = QFileDialog.getOpenFileName(win, "Open .ang", sd, "ANG files (*.ang);;All files (*)")
+            filt = ("EBSD scan files (*.ang *.osc *.ctf *.h5 *.oh5 *.hdf5 *.hdf *.dream3d);;"
+                    "TSL/EDAX text (*.ang);;EDAX OIM binary (*.osc);;"
+                    "HKL Channel 5 (*.ctf);;HDF5 / h5ebsd (*.h5 *.oh5 *.hdf5 *.hdf *.dream3d);;"
+                    "All files (*)")
+            p, _ = QFileDialog.getOpenFileName(win, "Open EBSD scan", sd, filt)
             if p:
                 ang.setText(p); win.file_chip.setText(os.path.basename(p))
         browse.clicked.connect(pick)
         fr = QHBoxLayout(); fr.setSpacing(7); fr.addWidget(ang, 1); fr.addWidget(browse)
         fw = QWidget(); fw.setObjectName("RowCont"); fw.setLayout(fr)
-        lay.addWidget(_row(".ang file", fw)); c["ang"] = ang
+        lay.addWidget(_row("EBSD scan (.ang / .osc / .ctf / h5ebsd)", fw)); c["ang"] = ang
         c["task"] = SegGroup([("grain", "grain"), ("phase", "phase"), ("both", "both")], default=d.task)
         lay.addWidget(_row("Task", c["task"]))
         c["input_channel"] = SegGroup([("iq", "IQ"), ("composite", "composite")], default=d.input_channel)
         lay.addWidget(_row("Input channel (grain + phase)", c["input_channel"]))
         c["gpu_index"] = _sb(0, 8, d.gpu_index)
         lay.addWidget(_row("GPU index", c["gpu_index"]))
+
+        # --- crop before MatSAM (drag on the map, or type numbers) -----------
+        c["crop_enabled"] = QCheckBox("Crop before analysis")
+        c["crop_enabled"].setChecked(d.crop_enabled)
+        c["crop_enabled"].setStyleSheet("color:#dbe4ef; font-size:12px;")
+        lay.addWidget(c["crop_enabled"])
+        c["crop_x"] = _sb(0, 100000, d.crop_x); c["crop_y"] = _sb(0, 100000, d.crop_y)
+        c["crop_w"] = _sb(0, 100000, d.crop_w); c["crop_h"] = _sb(0, 100000, d.crop_h)
+        lay.addWidget(_two(_row("Crop X [px]", c["crop_x"]), _row("Crop Y [px]", c["crop_y"])))
+        lay.addWidget(_two(_row("Crop W [px] (0=edge)", c["crop_w"]),
+                           _row("Crop H [px] (0=edge)", c["crop_h"])))
+        _hint = QLabel("Tip: drag on the IQ map to draw the crop; the boxes update live.")
+        _hint.setStyleSheet("color:#9fb0c4; font-size:10px; font-style:italic; background:transparent;")
+        _hint.setWordWrap(True); lay.addWidget(_hint)
+        win._crop_ctrls = c   # so the map pane can push drag rectangles back here
+
         adv = _adv(lay)
         c["grid_ratio"] = _dsb(0.25, 4.0, d.grid_ratio, 0.25, 2)
         c["kam_vmax"] = _dsb(0.5, 15, d.kam_vmax, 0.5, 1)
@@ -298,13 +318,17 @@ def read_all_controls(win) -> Config:
     cfg.model_dir = ""
 
     # step 1
-    cfg.ang_file = s1["ang"].text().strip()
+    cfg.input_file = s1["ang"].text().strip(); cfg.ang_file = cfg.input_file
     cfg.task = s1["task"].value() or "both"
     cfg.input_channel = s1["input_channel"].value() or "iq"
     cfg.gpu_index = s1["gpu_index"].value()
     cfg.grid_ratio = s1["grid_ratio"].value()
     cfg.kam_vmax = s1["kam_vmax"].value()
     cfg.norm_lo = s1["norm_lo"].value(); cfg.norm_hi = s1["norm_hi"].value()
+    if "crop_enabled" in s1:
+        cfg.crop_enabled = s1["crop_enabled"].isChecked()
+        cfg.crop_x = s1["crop_x"].value(); cfg.crop_y = s1["crop_y"].value()
+        cfg.crop_w = s1["crop_w"].value(); cfg.crop_h = s1["crop_h"].value()
 
     # step 2 basic
     cfg.preseg_grain = s2["preseg_grain"].currentText()

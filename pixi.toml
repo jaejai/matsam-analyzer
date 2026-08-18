@@ -16,7 +16,7 @@
 # run, and reuses it if already present (see matsam_engine/paths.py).
 [workspace]
 name = "matsam-analyzer"
-version = "1.0.0"
+version = "2.0.0"
 description = "MatSAM grain + phase segmentation (SAM2) desktop GUI"
 channels = ["conda-forge"]
 # CUDA 12 is declared on the GPU feature (below), not globally, so the CPU

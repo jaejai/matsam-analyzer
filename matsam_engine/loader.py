@@ -72,12 +72,44 @@ def _regrid_hex(cfg, raw, log):
     return ny, nx, iq, ci, euler
 
 
+def _apply_crop(cfg: Config, H, W, iq, ci, euler, log):
+    """Crop the square-grid maps to the config rectangle, before anything else.
+
+    euler may be None (KAM not needed). Returns cropped (H, W, iq, ci, euler).
+    An out-of-range / zero width|height is clamped to the map edge, so a partial
+    or default rectangle still yields a valid crop.
+    """
+    if not cfg.crop_enabled:
+        return H, W, iq, ci, euler
+    x0 = max(0, min(int(cfg.crop_x), W - 1))
+    y0 = max(0, min(int(cfg.crop_y), H - 1))
+    w = int(cfg.crop_w) if cfg.crop_w > 0 else W - x0
+    h = int(cfg.crop_h) if cfg.crop_h > 0 else H - y0
+    x1 = min(W, x0 + w)
+    y1 = min(H, y0 + h)
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        log(f"crop [{x0},{y0},{w},{h}] too small / out of range -> using full map")
+        return H, W, iq, ci, euler
+    iq = iq[y0:y1, x0:x1]
+    ci = ci[y0:y1, x0:x1]
+    if euler is not None:
+        euler = euler.reshape(H, W, 3)[y0:y1, x0:x1].reshape(-1, 3)
+    nH, nW = y1 - y0, x1 - x0
+    log(f"crop -> [{x0}:{x1}, {y0}:{y1}]  {nH}x{nW} (from {H}x{W})")
+    return nH, nW, iq, ci, euler
+
+
 def load_maps(cfg: Config, log=print) -> MapData:
     from orix.crystal_map import CrystalMap
     from orix.quaternion import Rotation, Orientation
     from orix.quaternion.symmetry import Oh
 
-    data = np.loadtxt(cfg.ang_file)
+    from .ebsd_read import read_ebsd
+    # Multi-format load (.ang text, .osc binary, .ctf / h5ebsd via orix); returns
+    # the same column layout np.loadtxt produced, so the hex/square logic below
+    # is unchanged.
+    data, _meta = read_ebsd(cfg.input_file)
+    log(f"[{_meta['format']}] loaded {data.shape[0]:,} pts x {data.shape[1]} cols")
     # KAM is needed only for the composite input channel (IQ x (1-KAM)); it now
     # applies to grain and/or phase, so compute it whenever composite is chosen.
     need_kam = (cfg.input_channel == "composite")
@@ -85,41 +117,31 @@ def load_maps(cfg: Config, log=print) -> MapData:
     if _is_hex(data[:, 3], data[:, 4]):
         # --- hexagonal scan: resample to a square grid (KD-tree NN) -----------
         H, W, iq, ci, euler = _regrid_hex(cfg, data, log)
-        if not need_kam:
-            log("KAM skipped (not used for this task/input)")
-            return MapData(H=H, W=W, iq=iq, ci=ci, kam_arr=None, kam_max=None)
-        # orientations from the RESAMPLED square-grid Euler angles
-        ori = Orientation.from_euler(euler, symmetry=Oh).reshape(H, W)
-        kam_arr, kam_max = _kam(ori, H, W)
-        log(f"KAM mean {np.degrees(kam_arr.mean()):.2f} deg")
-        return MapData(H=H, W=W, iq=iq, ci=ci, kam_arr=kam_arr, kam_max=kam_max)
+    else:
+        # --- square scan: orix reshape path -----------------------------------
+        xmap = CrystalMap(
+            rotations=Rotation.from_euler(data[:, 0:3]),
+            x=data[:, 3], y=data[:, 4],
+            phase_id=data[:, 7].astype(int),
+            prop={"iq": data[:, 5], "ci": data[:, 6],
+                  "sem": data[:, 8], "fit": data[:, 9]},
+        )
+        H, W = xmap.shape
+        iq = xmap.prop["iq"].reshape(xmap.shape, order="F")
+        ci = xmap.prop["ci"].reshape(xmap.shape, order="F")
+        # square-grid Euler angles in row-major (H, W) order, matching iq/ci
+        euler = data[:, 0:3].reshape(H, W, 3, order="F").reshape(-1, 3)
+        log(f"map shape: {xmap.shape}")
 
-    # --- square scan: original orix reshape path (unchanged) ------------------
-    xmap = CrystalMap(
-        rotations=Rotation.from_euler(data[:, 0:3]),
-        x=data[:, 3], y=data[:, 4],
-        phase_id=data[:, 7].astype(int),
-        prop={"iq": data[:, 5], "ci": data[:, 6],
-              "sem": data[:, 8], "fit": data[:, 9]},
-    )
-    H, W = xmap.shape
-    iq = xmap.prop["iq"].reshape(xmap.shape, order="F")
-    ci = xmap.prop["ci"].reshape(xmap.shape, order="F")
-    log(f"map shape: {xmap.shape}")
+    # Crop the maps (and euler) BEFORE anything downstream — pre-seg, SAM and
+    # screening then all operate on the cropped region only.
+    H, W, iq, ci, euler = _apply_crop(cfg, H, W, iq, ci, euler, log)
 
-    # KAM is only needed for the composite input channel (IQ x (1-KAM)).
-    # For input_channel="iq", skip the expensive 8-neighbour computation.
     if not need_kam:
         log("KAM skipped (not used for this task/input)")
         return MapData(H=H, W=W, iq=iq, ci=ci, kam_arr=None, kam_max=None)
 
-    try:
-        ori = Orientation(xmap.rotations, symmetry=Oh).reshape(H, W, order="F")
-    except TypeError:
-        flat = Orientation(xmap.rotations, symmetry=Oh)
-        idx = np.arange(H * W).reshape(H, W, order="F")
-        ori = flat[idx.ravel()].reshape(H, W)
-
+    ori = Orientation.from_euler(euler, symmetry=Oh).reshape(H, W)
     kam_arr, kam_max = _kam(ori, H, W)
     log(f"KAM mean {np.degrees(kam_arr.mean()):.2f} deg")
     return MapData(H=H, W=W, iq=iq, ci=ci, kam_arr=kam_arr, kam_max=kam_max)

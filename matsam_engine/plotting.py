@@ -81,8 +81,23 @@ def _figsize(img_shape, ncols, panel_h, title_pad=0.6):
     return (panel_h * ar * ncols, panel_h + title_pad)
 
 
-def _fig(img_shape, ncols, cfg: Config):
-    return Figure(figsize=_figsize(img_shape, ncols, cfg.panel_h), layout="constrained")
+def _fig(img_shape, ncols, cfg: Config, constrained=True):
+    layout = "constrained" if constrained else None
+    return Figure(figsize=_figsize(img_shape, ncols, cfg.panel_h), layout=layout)
+
+
+def _pack_panels(fig, wspace=0.04):
+    """Pull a row of image panels tightly together.
+
+    constrained-layout leaves each narrow panel centred in a wide slot, so for
+    tall/narrow maps the panels drift far apart with big side gaps. Building the
+    figure WITHOUT a layout engine (see _fig(constrained=False)) then packing
+    with a small wspace puts them side by side — and avoids the "layout engine
+    incompatible with subplots_adjust" warning.
+    """
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.90, bottom=0.01,
+                        wspace=wspace)
+    fig._packed = True          # tell FigurePane.show_figure to leave this alone
 
 
 def rand_cmap(n):
@@ -107,7 +122,7 @@ def iou(pred, gt):
 def fig_input_maps(cfg: Config, md: MapData) -> Figure:
     # only plot KAM if it was actually computed (used for composite phase input)
     ncols = 3 if md.kam_arr is not None else 2
-    fig = _fig(md.iq.shape, ncols, cfg); ax = fig.subplots(1, ncols)
+    fig = _fig(md.iq.shape, ncols, cfg, constrained=False); ax = fig.subplots(1, ncols)
     ax[0].imshow(md.iq, cmap="gray"); ax[0].set_title("IQ")
     ax[1].imshow(md.ci, cmap="gray"); ax[1].set_title("CI")
     if md.kam_arr is not None:
@@ -115,6 +130,7 @@ def fig_input_maps(cfg: Config, md: MapData) -> Figure:
         ax[2].set_title(f"KAM (0-{cfg.kam_vmax:g} deg)")
     for a in ax:
         a.axis("off")
+    _pack_panels(fig)
     return fig
 
 

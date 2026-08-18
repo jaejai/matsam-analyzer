@@ -27,7 +27,9 @@ def screen_phase(cfg, md, img_u8, masks, scores, otsu_binary, min_score, min_are
         if img_u8[m].mean() < t:
             fg |= (m & otsu_binary)
             kept += 1
-    fg = remove_small_objects(fg, min_area)
+    # skimage >=0.26 renamed the threshold to max_size (positional min_size is
+    # deprecated); max_size=N is behaviourally identical to the old min_size=N.
+    fg = remove_small_objects(fg, max_size=min_area)
     log(f"  [phase] kept {kept}/{len(masks)} | fg {100*fg.mean():.1f}% "
         f"(min_score={min_score}, min_area={min_area}, dropped_oversize={drop_big})")
     return fg
@@ -118,14 +120,16 @@ def _majority_filter(lab, size):
 def _morph_cleanup(lab, radius):
     """Per-label morphological opening then closing (disk radius) to round off
     protrusions and fill pinholes, without merging separate grains."""
-    from skimage.morphology import binary_opening, binary_closing, disk
+    # skimage >=0.26 deprecated binary_opening/binary_closing; `opening`/`closing`
+    # give identical bool output on a boolean image.
+    from skimage.morphology import opening, closing, disk
     from scipy.ndimage import distance_transform_edt
     se = disk(int(radius))
     out = np.zeros_like(lab)
     for lb in np.unique(lab):
         if lb == 0:
             continue
-        m = binary_closing(binary_opening(lab == lb, se), se)
+        m = closing(opening(lab == lb, se), se)
         out[m] = lb
     # opening can leave new holes -> fill any label-0 by nearest grain
     if (out == 0).any() and out.max() > 0:
