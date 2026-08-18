@@ -1,4 +1,4 @@
-"""SAM2 model load + inference. Ports notebook §4 (load) and §7 (run + pick).
+"""SAM2 model load + inference.
 
 The expensive stage. A loaded SamRunner is reused across screening re-tunes;
 only run() (SAM inference) is costly.

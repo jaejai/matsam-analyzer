@@ -1,4 +1,4 @@
-"""Figure builders — seed preview (§6), comparison panels (§9), overlay (§9b).
+"""Figure builders — seed preview, comparison panels, overlay.
 
 Every function returns a matplotlib Figure so it can be embedded in the GUI
 canvas or saved to an image. No plt.show().
@@ -118,7 +118,7 @@ def iou(pred, gt):
     return _miou(pred.astype(bool), gt.astype(bool))
 
 
-# ---------------------------------------------------------------- input maps (§1)
+# ---------------------------------------------------------------- input maps
 def fig_input_maps(cfg: Config, md: MapData) -> Figure:
     # only plot KAM if it was actually computed (used for composite phase input)
     ncols = 3 if md.kam_arr is not None else 2
@@ -134,7 +134,7 @@ def fig_input_maps(cfg: Config, md: MapData) -> Figure:
     return fig
 
 
-# ---------------------------------------------------------------- seed preview (§6)
+# ---------------------------------------------------------------- seed preview
 def fig_seeds(cfg: Config, S: dict) -> Figure:
     img, task = S["img"], S["task"]
     roi = np.array(S["roi"]) if S["roi"] else np.empty((0, 2))
@@ -158,7 +158,7 @@ def fig_seeds(cfg: Config, S: dict) -> Figure:
     return fig
 
 
-# ---------------------------------------------------------------- comparison (§9)
+# ---------------------------------------------------------------- comparison
 def fig_compare(cfg: Config, md: MapData, seeds: dict, result: dict, task: str) -> Figure:
     S = seeds[task]; img = S["img"]
     if task == "grain":
@@ -189,7 +189,7 @@ def fig_compare(cfg: Config, md: MapData, seeds: dict, result: dict, task: str) 
     return fig
 
 
-# ---------------------------------------------------------------- overlay (§9b)
+# ---------------------------------------------------------------- overlay
 def fig_overlay(cfg: Config, md: MapData, seeds: dict, result: dict) -> Figure:
     """Input | (grain result) | overlay. Works for grain-only, phase-only, or both:
     the overlay panel shows grain boundaries (cyan) and/or phase (red) as present."""

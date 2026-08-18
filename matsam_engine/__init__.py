@@ -1,4 +1,4 @@
-"""MatSAM engine — grain + phase segmentation, extracted from matsam_sam2.ipynb.
+"""MatSAM engine — grain + phase segmentation.
 
 Pure-compute layer (no GUI). Pipeline:
   load_maps -> build_input -> make_seeds -> SamRunner.run -> screen_all -> figures.

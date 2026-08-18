@@ -1,7 +1,6 @@
 """Configuration for the MatSAM (grain + phase) segmentation pipeline.
 
-Mirrors the `## 0. Master control` cell of matsam_sam2.ipynb as a dataclass so
-the GUI / CLI can drive it instead of editing module globals.
+A dataclass so the GUI / CLI can drive it instead of editing module globals.
 """
 from __future__ import annotations
 
@@ -102,8 +101,8 @@ class Config:
     min_grain_area: int = 10
 
     # --- grid resampling -----------------------------------------------------
-    # Hex .ang scans are resampled onto a square grid (nearest-neighbour), like
-    # the EBSD_ODF app. grid_ratio scales the square step: 1.0 = native hex step.
+    # Hex .ang scans are resampled onto a square grid (nearest-neighbour).
+    # grid_ratio scales the square step: 1.0 = native hex step.
     # Square-grid scans are used as-is (no resampling) so results stay identical.
     grid_ratio: float = 1.0
 

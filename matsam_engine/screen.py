@@ -1,7 +1,6 @@
 """Mask screening — turn raw SAM masks into final grain / phase results.
 
-Ports notebook §8. Cheap; re-run freely while tuning min_score / max_mask_frac
-without re-running SAM.
+Cheap; re-run freely while tuning min_score / max_mask_frac without re-running SAM.
 """
 from __future__ import annotations
 

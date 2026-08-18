@@ -28,7 +28,7 @@ app = "python app.py"
 verify = "python verify_matsam.py"
 
 # ---- shared deps (both environments) -----------------------------------------
-# Pinned to the versions verified against the notebook (EBSD_SAM3 env).
+# Pinned to the verified versions.
 [dependencies]
 python = "3.12.*"
 numpy = "2.3.*"

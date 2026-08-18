@@ -1,4 +1,4 @@
-"""Save result figures as image files (replaces the EBSD PowerPoint report)."""
+"""Save result figures as image files."""
 from __future__ import annotations
 
 import os

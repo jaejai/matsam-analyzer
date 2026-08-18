@@ -1,7 +1,4 @@
-"""Load EBSD .ang + derived maps (IQ, CI, KAM) and build the SAM input channel.
-
-Ports notebook sections §1 and §2 (matsam_sam2.ipynb).
-"""
+"""Load EBSD .ang + derived maps (IQ, CI, KAM) and build the SAM input channel."""
 from __future__ import annotations
 
 import os
@@ -45,7 +42,7 @@ def _is_hex(x, y) -> bool:
 
 
 def _regrid_hex(cfg, raw, log):
-    """Nearest-neighbour resample a hex .ang onto a square grid (EBSD_ODF §2).
+    """Nearest-neighbour resample a hex .ang onto a square grid.
 
     raw columns: 0-2 phi1/PHI/phi2, 3 x, 4 y, 5 iq, 6 ci, 7 phase, 8 sem, 9 fit.
     Returns (H, W, iq, ci, euler, nn_idx) where euler is the square-grid Euler
@@ -161,7 +158,7 @@ def _kam(ori, H, W):
     return np.nanmedian(neighbor_angles, axis=2), np.nanmax(neighbor_angles, axis=2)
 
 
-# --- input-channel builder (§2) ---------------------------------------------
+# --- input-channel builder ---------------------------------------------------
 def norm01(a, cfg: Config):
     vmin, vmax = np.percentile(a, [cfg.norm_lo, cfg.norm_hi])
     return np.clip((a - vmin) / (vmax - vmin + 1e-10), 0, 1)

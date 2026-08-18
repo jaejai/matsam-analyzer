@@ -6,7 +6,7 @@ with strict gating: changing seeds (Step 2) invalidates the SAM run (Step 3);
 Step 4 needs Step 3; Step 5 needs Step 4. SAM runs once and is reused across
 screening re-tunes. Save exports the result figure(s) as an image (no PowerPoint).
 
-Run:  python app.py   (needs the EBSD_SAM3 env: torch + transformers)
+Run:  python app.py
 """
 from __future__ import annotations
 

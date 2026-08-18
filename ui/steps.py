@@ -78,8 +78,7 @@ def build_step_controls(win, n):
         def pick():
             import os
             from app import ROOT
-            sd = os.path.join(ROOT, "dp_data", "sqr")
-            sd = sd if os.path.isdir(sd) else ROOT
+            sd = ROOT
             filt = ("EBSD scan files (*.ang *.osc *.ctf *.h5 *.oh5 *.hdf5 *.hdf *.dream3d);;"
                     "TSL/EDAX text (*.ang);;EDAX OIM binary (*.osc);;"
                     "HKL Channel 5 (*.ctf);;HDF5 / h5ebsd (*.h5 *.oh5 *.hdf5 *.hdf *.dream3d);;"

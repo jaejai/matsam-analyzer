@@ -1,6 +1,5 @@
 """Rule-based pre-segmentation, seed finding, and baselines.
 
-Ports notebook section §3 (baselines + pre-seg + seed finders) and §5 (make_seeds).
 Global config/params are passed via Config; H/W via MapData.
 """
 from __future__ import annotations
@@ -155,7 +154,7 @@ def seg_adaptive_phase(cfg, img_u8, dark_fg=True):
     return fg
 
 
-# ===================== make_seeds (§5) =====================
+# ===================== make_seeds =====================
 def make_seeds(cfg: Config, md: MapData, img_u8, task, log=print):
     H, W = md.H, md.W
     if task == "grain":

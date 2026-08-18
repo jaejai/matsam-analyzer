@@ -5,11 +5,7 @@ Reads .ang (text), .osc (EDAX binary), and orix-supported .ctf / h5ebsd into one
     0:phi1 1:PHI 2:phi2 3:x 4:y 5:IQ 6:CI 7:phase   (Euler radians, Bunge/TSL)
 
 Also returns per-phase metadata (id, name, point group, lattice) and the
-dominant crystal point group. The .osc reader is ported from MTEX's BSD-licensed
-loadEBSD_osc.m (Osc2Ang, Pilchak/Shiveley, USAFRL); verified against matching
-.ang files (identical point count and euler/x/y/CI to float32 precision, same
-symmetry code). This module is the standalone twin of the notebook's `oscreader`
-cell in EBSD_ODF_combined_kikuchipy.ipynb.
+dominant crystal point group.
 """
 from __future__ import annotations
 
@@ -52,7 +48,7 @@ def _sym_from_osc(buf):
         return None
     hb = buf[i0 + 8:i1]
     # laueGroup int32 sits 256 B into a phase block; scan for a known code whose
-    # following 24 B parse as a valid lattice (self-validating, per MTEX layout).
+    # following 24 B parse as a valid lattice (self-validating).
     for off in range(0, len(hb) - 288):
         code = int(np.frombuffer(hb[off + 256:off + 260], dtype="<i4")[0])
         if code in _TSL_SYM:
